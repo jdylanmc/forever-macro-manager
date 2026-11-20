@@ -1,0 +1,10 @@
+## Interface: 16001
+## Title: Forever Macro Manager
+## Notes: Read-only macro cheat sheet beside Blizzard's macro editor.
+## Author: Dylan McCurry
+## Version: @project-version@
+
+Changelog.lua
+Reference.lua
+Panel.lua
+Core.lua

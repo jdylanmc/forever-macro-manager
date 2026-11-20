@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        if: github.ref_type == 'branch'
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        if: github.ref_type == 'branch'
+
+      - name: Version pull request
+        id: changesets
+        if: github.ref_type == 'branch'
+        uses: changesets/action@v2
+        with:
+          version-script: npm run version
+          commit-message: 'chore: version packages'
+          pr-title: 'chore: version packages'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag new version
+        id: tag
+        if: github.ref_type == 'tag' || steps.changesets.outputs.has-changesets == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="$GITHUB_REF_NAME"
+          else
+            version="v$(node -p "require('./package.json').version")"
+          fi
+          if [ "$version" = v0.0.0 ]; then
+            echo "0.0.0 is a tooling seed, not a release." >&2
+            exit 1
+          fi
+          tag_exists=false
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            tag_exists=true
+          elif git ls-remote --exit-code --tags origin "refs/tags/$version" >/dev/null; then
+            tag_exists=true
+          else
+            status=$?
+            if [ "$status" -ne 2 ]; then
+              exit "$status"
+            fi
+          fi
+          if [ "$tag_exists" = true ]; then
+            if out=$(gh release view "$version" 2>&1); then
+              echo "$version already released."
+              exit 0
+            elif [ "$out" != "release not found" ]; then
+              echo "$out" >&2
+              exit 1
+            fi
+            if [ "$GITHUB_REF_TYPE" = branch ]; then
+              echo "$version is tagged but has no release; packaging the tag."
+              git fetch --force origin "refs/tags/$version:refs/tags/$version"
+              git checkout --detach "$version"
+            fi
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$version" -m "$version"
+            git push origin "$version"
+          fi
+          echo "package=true" >> "$GITHUB_OUTPUT"
+
+      - name: Package and upload to GitHub
+        if: steps.tag.outputs.package == 'true'
+        uses: BigWigsMods/packager@v2
+        env:
+          GH_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
