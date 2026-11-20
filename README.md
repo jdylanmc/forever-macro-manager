@@ -78,7 +78,10 @@ Before authorizing a release, generate a CurseForge API token at
 <https://authors.curseforge.com/#/settings/api-tokens> and add it as the repository
 Actions secret `CF_API_TOKEN`. Never copy Radial Bars' credentials or store token
 values in source. Wiring alone does not verify authentication or upload success;
-the secret must be configured before publishing. Development performs no upload.
+the secret must be configured before publishing. A packaging preflight fails
+before the workflow creates a tag or GitHub release if the token is missing;
+pending Version Packages pull requests are unaffected. Development performs no
+upload.
 
 ## Source notes
 
