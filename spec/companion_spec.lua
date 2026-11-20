@@ -13,6 +13,11 @@ local function scrollFor(panel)
 	error("Missing scroll frame")
 end
 
+local function intersects(a, b)
+	return a:GetLeft() < b:GetRight() and a:GetRight() > b:GetLeft()
+		and a:GetBottom() < b:GetTop() and a:GetTop() > b:GetBottom()
+end
+
 describe("macro editor companion", function()
 	it("waits for the load-on-demand editor and attaches exactly once", function()
 		local world = Wow.new()
@@ -95,6 +100,10 @@ describe("macro editor companion", function()
 		assert.is_true(panel:GetHeight() >= 160)
 		assert.is_true(panel:GetBottom() >= 0)
 		assert.is_true(panel:GetRight() <= 900)
+		assert.is_false(intersects(panel, editor))
+		assert.is_false(intersects(panel, popup))
+		assert.is_true(panel:GetTop() < popup:GetBottom(),
+			"the entire companion, including its scroll-up control, must clear the popup")
 	end)
 
 	it("reflows scrolling content and clamps wheel input after screen resize", function()

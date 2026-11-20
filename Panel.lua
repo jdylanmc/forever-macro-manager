@@ -79,28 +79,34 @@ function ns.CreatePanel(editor)
 		-- Use screen units even when another addon changes the editor's scale.
 		self:SetScale(UIParent:GetEffectiveScale() / editor:GetEffectiveScale())
 		local screenWidth, screenHeight = UIParent:GetWidth(), UIParent:GetHeight()
-		local right = bounds.right
+		local leftEdge, rightEdge = bounds.left, bounds.right
+		local topEdge, bottomEdge = bounds.top, bounds.bottom
 		if MacroPopupFrame and MacroPopupFrame:IsShown() then
 			local popupBounds = rect(MacroPopupFrame)
-			if popupBounds then right = math.max(right, popupBounds.right) end
+			if popupBounds then
+				leftEdge = math.min(leftEdge, popupBounds.left)
+				rightEdge = math.max(rightEdge, popupBounds.right)
+				topEdge = math.max(topEdge, popupBounds.top)
+				bottomEdge = math.min(bottomEdge, popupBounds.bottom)
+			end
 		end
 		local width, height = WIDTH, math.min(424, screenHeight - 2 * MARGIN)
 		local left, bottom
-		if screenWidth - right - GAP - MARGIN >= MIN_WIDTH then
-			width = math.min(width, screenWidth - right - GAP - MARGIN)
-			left, bottom = right + GAP, bounds.top - height
-		elseif bounds.left - GAP - MARGIN >= MIN_WIDTH then
-			width = math.min(width, bounds.left - GAP - MARGIN)
-			left, bottom = bounds.left - GAP - width, bounds.top - height
-		elseif bounds.bottom - GAP - MARGIN >= MIN_HEIGHT then
-			height = math.min(height, bounds.bottom - GAP - MARGIN)
-			left, bottom = bounds.left, bounds.bottom - GAP - height
-		elseif screenHeight - bounds.top - GAP - MARGIN >= MIN_HEIGHT then
-			height = math.min(height, screenHeight - bounds.top - GAP - MARGIN)
-			left, bottom = bounds.left, bounds.top + GAP
+		if screenWidth - rightEdge - GAP - MARGIN >= MIN_WIDTH then
+			width = math.min(width, screenWidth - rightEdge - GAP - MARGIN)
+			left, bottom = rightEdge + GAP, bounds.top - height
+		elseif leftEdge - GAP - MARGIN >= MIN_WIDTH then
+			width = math.min(width, leftEdge - GAP - MARGIN)
+			left, bottom = leftEdge - GAP - width, bounds.top - height
+		elseif bottomEdge - GAP - MARGIN >= MIN_HEIGHT then
+			height = math.min(height, bottomEdge - GAP - MARGIN)
+			left, bottom = bounds.left, bottomEdge - GAP - height
+		elseif screenHeight - topEdge - GAP - MARGIN >= MIN_HEIGHT then
+			height = math.min(height, screenHeight - topEdge - GAP - MARGIN)
+			left, bottom = bounds.left, topEdge + GAP
 		else
 			-- Extremely small viewports cannot hold both panels without overlap.
-			left, bottom = right + GAP, bounds.top - height
+			left, bottom = rightEdge + GAP, bounds.top - height
 		end
 		width = math.min(width, screenWidth - 2 * MARGIN)
 		self:SetSize(width, height)

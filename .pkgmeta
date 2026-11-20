@@ -11,6 +11,9 @@ ignore:
   - .gitignore
   - .luacheckrc
   - .tools
+  - .lua
+  - .luarocks
+  - .install
   - CHANGELOG.md
   - README.md
   - docs

@@ -15,6 +15,10 @@ Version policy is **major.minor.revision**: new features use `minor`, fixes use
 Changesets `patch` (revision). Use `major` **only on Dylan's explicit direction**;
 an incompatible change does not independently authorize a major bump.
 
+The comparison ref is `origin/main`, available in both normal clones and CI's
+detached pull-request checkout. Keep remote refs fetched; a local `main` branch
+is not required for release-plan validation.
+
 `package.json` starts at **0.0.0 as a tooling seed**, not a released addon.
 The pending initial minor changeset plans the first actual release, **0.1.0**.
 Do not pre-bump the seed to 0.1.0 or consume the initial changeset during

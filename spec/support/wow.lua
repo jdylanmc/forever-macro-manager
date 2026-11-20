@@ -76,8 +76,9 @@ function Wow.new()
 	function methods:GetLeft()
 		if self.unpositioned then return nil end
 		if self.anchorRelative then
-			return self.anchorRelative:GetLeft() * self.anchorRelative:GetEffectiveScale() / self:GetEffectiveScale()
-				+ self.anchorX
+			local left = self.anchorPoint == "TOPLEFT"
+				and self.anchorRelative:GetRight() or self.anchorRelative:GetLeft()
+			return left * self.anchorRelative:GetEffectiveScale() / self:GetEffectiveScale() + self.anchorX
 		end
 		return self.left
 	end
@@ -88,6 +89,10 @@ function Wow.new()
 	function methods:GetBottom()
 		if self.unpositioned then return nil end
 		if self.anchorRelative then
+			if self.anchorPoint == "TOPLEFT" then
+				return self.anchorRelative:GetTop() * self.anchorRelative:GetEffectiveScale() / self:GetEffectiveScale()
+					+ self.anchorY - self:GetHeight()
+			end
 			return self.anchorRelative:GetBottom() * self.anchorRelative:GetEffectiveScale() / self:GetEffectiveScale()
 				+ self.anchorY
 		end
@@ -105,8 +110,10 @@ function Wow.new()
 		if type(relative) == "number" then
 			self.points[point] = { relative, relativePoint }
 		elseif relative then
-			assert(point == "BOTTOMLEFT" and relativePoint == "BOTTOMLEFT")
+			assert((point == "BOTTOMLEFT" and relativePoint == "BOTTOMLEFT")
+				or (point == "TOPLEFT" and relativePoint == "TOPRIGHT"))
 			self.anchorRelative, self.anchorX, self.anchorY = relative, x, y
+			self.anchorPoint = point
 		end
 	end
 	function methods:SetScrollChild(child) self.scrollChild = child end
@@ -143,8 +150,9 @@ function Wow.new()
 		editor.shown = shown
 		self.env.MacroFrame = editor
 		local popup = frame("Frame", "MacroPopupFrame", editor)
-		popup:SetSize(320, 400)
-		popup.left, popup.bottom, popup.shown = editor:GetRight(), editor.bottom, false
+		popup:SetSize(525, 495)
+		popup:SetPoint("TOPLEFT", editor, "TOPRIGHT", 0, 5)
+		popup.shown = false
 		self.env.MacroPopupFrame = popup
 		return editor, popup
 	end

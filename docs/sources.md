@@ -9,6 +9,10 @@ Source pinned to installed client build **1.60.1.70959**:
   load-on-demand TOC; `MacroFrame` is 338×424, owns native OnShow/OnHide scripts,
   and its editor's `letters="255"` limit includes invisible characters.
   `MacroPopupFrame` is a child anchored to the editor's right side.
+- [SharedUIPanelTemplates](https://github.com/Gethe/wow-ui-source/blob/3d8abb1da73acd38e412e24fb3f99454a6392346/Interface/AddOns/Blizzard_SharedXML/Mainline/SharedUIPanelTemplates.xml):
+  the icon-selector popup template is 525×495. The macro popup's anchor raises
+  its top 5 units above the editor, so it extends below the 424-unit editor.
+  Layout fallbacks reserve the combined visible editor/popup bounds.
 - [Shared slash handlers](https://github.com/Gethe/wow-ui-source/blob/3d8abb1da73acd38e412e24fb3f99454a6392346/Interface/AddOns/Blizzard_ChatFrameBase/Shared/SlashCommands.lua):
   cast/use resolve `SecureCmdOptionParse` and pass its target to casting/item
   APIs; `/cast` prefers spells and `/use` prefers items. Stopcasting,

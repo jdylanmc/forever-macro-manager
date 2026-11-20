@@ -1,14 +1,20 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { test } from 'node:test';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import path from 'node:path';
 import { parseChangelog } from './build-changelog.mjs';
 
 const root = new URL('../', import.meta.url);
 const read = file => readFileSync(new URL(file, root), 'utf8');
 const require = createRequire(import.meta.url);
+
+function childDiagnostics(command, result) {
+  return `${command} failed (status ${result.status}, signal ${result.signal}):\n`
+    + `${result.error?.stack ?? ''}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`;
+}
 
 test('approved first release is pending as 0.1.0 or present in versioned history', () => {
   if (JSON.parse(read('package.json')).version !== '0.0.0') {
@@ -17,16 +23,39 @@ test('approved first release is pending as 0.1.0 or present in versioned history
     return;
   }
   const cli = require.resolve('@changesets/cli/bin.js');
-  const result = spawnSync(process.execPath, [cli, 'status', '--output=.release-plan.json'], {
-    cwd: root, encoding: 'utf8',
-  });
-  assert.equal(result.status, 0, result.stderr);
-  // The status command writes a report, never versions or consumes changesets.
+  const gitDir = fileURLToPath(new URL(`.tools/release-refs-${process.pid}/`, root));
+  const git = (args, env = process.env) => {
+    const result = spawnSync('git', args, { cwd: root, env, encoding: 'utf8' });
+    assert.equal(result.status, 0, childDiagnostics(`git ${args.join(' ')}`, result));
+    return result.stdout.trim();
+  };
+  const head = git(['rev-parse', 'HEAD']);
+  const base = git(['rev-parse', 'origin/main']);
+  const objects = path.join(git(['rev-parse', '--path-format=absolute', '--git-common-dir']), 'objects');
+  mkdirSync(new URL('.tools/', root), { recursive: true });
   let plan;
   try {
+    // Match checkout@v7 PR refs without switching or editing the real checkout.
+    git(['init', '--bare', '--quiet', gitDir]);
+    const env = {
+      ...process.env,
+      GIT_DIR: gitDir,
+      GIT_WORK_TREE: fileURLToPath(root),
+      GIT_ALTERNATE_OBJECT_DIRECTORIES: [objects, process.env.GIT_ALTERNATE_OBJECT_DIRECTORIES]
+        .filter(Boolean).join(path.delimiter),
+    };
+    git(['update-ref', '--no-deref', 'HEAD', head], env);
+    git(['update-ref', 'refs/remotes/origin/main', base], env);
+    assert.equal(git(['for-each-ref', '--format=%(refname)', 'refs/heads'], env), '');
+    const result = spawnSync(process.execPath, [cli, 'status', '--output=.release-plan.json'], {
+      cwd: root, env, encoding: 'utf8',
+    });
+    assert.equal(result.status, 0, childDiagnostics('changeset status', result));
+    // Status writes a report, never versions or consumes changesets.
     plan = JSON.parse(read('.release-plan.json'));
   } finally {
     rmSync(new URL('.release-plan.json', root), { force: true });
+    rmSync(gitDir, { recursive: true, force: true });
   }
   assert.deepEqual(plan.releases.map(({ name, type, oldVersion, newVersion }) =>
     ({ name, type, oldVersion, newVersion })), [{
