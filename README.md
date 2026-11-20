@@ -57,7 +57,8 @@ Metadata is session-only. Opening the popup indexes bounded player spellbook,
 equipment, and carried bag slots; relevant events refresh that metadata while
 open. Missing item/spell data loads asynchronously without blocking or retry loops.
 Typing searches the existing index, not item/spell ID spaces. Closing and
-reopening resets search, filter and sort; nothing is persisted or downloaded.
+reopening resets search, filter and sort. The addon saves no settings or metadata
+and downloads no external catalogue; the client owns its normal data cache.
 
 ## Compatibility and placement
 
