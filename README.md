@@ -58,9 +58,10 @@ and generate `Changelog.lua`. The Lua file is packaged data, not another feature
 
 Release automation follows Forever Radial Bars' new PR #1 setup, not its old
 tag-only main: CI -> Version Packages pull request -> human merge -> annotated
-version tag -> BigWigs packager/GitHub release. Tag pushes and manual workflow
-dispatch can also package. Existing GitHub releases are skipped; a tagged version
-without a release can be retried. The 0.0.0 seed is never released.
+version tag -> BigWigs packager -> GitHub release and CurseForge upload.
+Tag pushes and manual workflow dispatch can also package. Existing GitHub releases
+are skipped; a tagged version without a release can be retried. The 0.0.0 seed is
+never released.
 
 The port corrects the source workflow's obsolete Changesets inputs for
 `changesets/action@v2`: `version-script`, `commit-message`, `pr-title`,
@@ -69,12 +70,15 @@ the changelog generator. Repository Actions settings must allow GitHub Actions
 to create pull requests (the setting is named “Allow GitHub Actions to create
 and approve pull requests”). No workflow approves or merges them.
 
-**CurseForge publishing is not configured.** Later, create a separate Forever
-Macro Manager project, add its real `X-Curse-Project-ID` to the TOC, configure
-the repository's `CF_API_TOKEN` secret, and explicitly wire that secret into the
-packager step. Never copy Radial Bars' project ID or credentials. The current
-workflow only supplies the GitHub token. No project ID or credential value is
-included, and development performs no upload.
+**CurseForge upload wiring targets project `1819592`.** The TOC identifies this
+Forever Macro Manager project, separate from Forever Radial Bars. The packager
+step receives the repository's `CF_API_TOKEN` secret alongside its GitHub token.
+
+Before authorizing a release, generate a CurseForge API token at
+<https://authors.curseforge.com/#/settings/api-tokens> and add it as the repository
+Actions secret `CF_API_TOKEN`. Never copy Radial Bars' credentials or store token
+values in source. Wiring alone does not verify authentication or upload success;
+the secret must be configured before publishing. Development performs no upload.
 
 ## Source notes
 

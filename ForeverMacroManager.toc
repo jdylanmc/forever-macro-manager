@@ -3,6 +3,7 @@
 ## Notes: Read-only macro cheat sheet beside Blizzard's macro editor.
 ## Author: Dylan McCurry
 ## Version: @project-version@
+## X-Curse-Project-ID: 1819592
 
 Changelog.lua
 Reference.lua

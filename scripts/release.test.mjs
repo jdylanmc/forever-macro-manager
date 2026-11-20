@@ -80,14 +80,14 @@ test('release uses actual Changesets action v2 inputs/output and custom generato
   assert.equal(JSON.parse(read('package.json')).scripts.version,
     'changeset version && node scripts/build-changelog.mjs');
   assert.match(workflow, /v0\.0\.0/);
-  assert.doesNotMatch(workflow, /CF_API_TOKEN|--approve|pr merge/);
+  assert.doesNotMatch(workflow, /--approve|pr merge/);
 });
 
 test('package contains all namespace modules in load order, without client configuration', () => {
   const toc = read('ForeverMacroManager.toc');
   assert.match(toc, /## Interface: 16001/);
   assert.match(toc, /## Version: @project-version@/);
-  assert.doesNotMatch(toc, /SavedVariables|curse-project-id|OptionalDeps|LoadOnDemand/i);
+  assert.doesNotMatch(toc, /SavedVariables|OptionalDeps|LoadOnDemand/i);
   const modules = toc.split(/\r?\n/).filter(line => line && !line.startsWith('#'));
   assert.deepEqual(modules, ['Changelog.lua', 'Reference.lua', 'Panel.lua', 'Core.lua']);
   for (const module of modules) assert.ok(read(module).length > 0);

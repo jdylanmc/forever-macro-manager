@@ -86,8 +86,9 @@ jobs:
           fi
           echo "package=true" >> "$GITHUB_OUTPUT"
 
-      - name: Package and upload to GitHub
+      - name: Package and upload to GitHub and CurseForge
         if: steps.tag.outputs.package == 'true'
         uses: BigWigsMods/packager@v2
         env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           GH_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
