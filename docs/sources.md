@@ -13,6 +13,20 @@ Source pinned to installed client build **1.60.1.70959**:
   the icon-selector popup template is 525×495. The macro popup's anchor raises
   its top 5 units above the editor, so it extends below the 424-unit editor.
   Layout fallbacks reserve the combined visible editor/popup bounds.
+- [Native macro edit/save behavior](https://github.com/Gethe/wow-ui-source/blob/3d8abb1da73acd38e412e24fb3f99454a6392346/Interface/AddOns/Blizzard_MacroUI/Blizzard_MacroUI.lua):
+  `GetSelectedIndex()` identifies the current selection. The XML's
+  `MacroFrameText` OnTextChanged handler marks the draft dirty and updates its
+  count. Native Save, OnHide, tab changes, and macro-selection callbacks call
+  SaveMacro; the addon does not invoke those handlers or persistence APIs.
+- [Pinned EditBox API](https://github.com/Gethe/wow-ui-source/blob/3d8abb1da73acd38e412e24fb3f99454a6392346/Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleEditBoxAPIDocumentation.lua):
+  exposes Insert, GetNumLetters, GetMaxLetters, GetMaxBytes, IsEnabled,
+  IsInIMECompositionMode, cursor accessors, and HighlightText. It exposes no
+  readable selection-range getter. The companion calls Insert once, leaving
+  cursor movement/selection replacement to the native editbox, and checks
+  native letter counts plus byte ceilings before touching the buffer.
+  Selection size cannot safely be subtracted: a near-limit draft is rejected
+  even if replacing selected text would fit. There is no temporary buffer
+  mutation, guessed highlight getter, clipboard, forced save, or truncation.
 - [Shared slash handlers](https://github.com/Gethe/wow-ui-source/blob/3d8abb1da73acd38e412e24fb3f99454a6392346/Interface/AddOns/Blizzard_ChatFrameBase/Shared/SlashCommands.lua):
   cast/use resolve `SecureCmdOptionParse` and pass its target to casting/item
   APIs; `/cast` prefers spells and `/use` prefers items. Stopcasting,

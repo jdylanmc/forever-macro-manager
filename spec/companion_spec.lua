@@ -18,6 +18,17 @@ local function intersects(a, b)
 		and a:GetBottom() < b:GetTop() and a:GetTop() > b:GetBottom()
 end
 
+local function exampleButton(world, sample)
+	for _, object in ipairs(world.frames) do
+		if object.kind == "Button" then
+			for _, child in ipairs(object.parent.children) do
+				if child.kind == "FontString" and child.text == sample then return object, child end
+			end
+		end
+	end
+	error("Missing example control: " .. sample)
+end
+
 describe("macro editor companion", function()
 	it("waits for the load-on-demand editor and attaches exactly once", function()
 		local world = Wow.new()
@@ -155,5 +166,189 @@ describe("macro editor companion", function()
 		editor.bottom = editor.bottom - 50
 		assert.equals(left + 100, panel:GetLeft())
 		assert.equals(bottom - 50, panel:GetBottom())
+	end)
+
+	it("pairs every standalone example with a cyan label and a labeled Add control", function()
+		local world = Wow.new()
+		world:editor(true)
+		loadAddon(world)
+		local count = 0
+		for _, object in ipairs(world.frames) do
+			if object.kind == "Button" then
+				count = count + 1
+				local sample
+				for _, child in ipairs(object.parent.children) do
+					if child.kind == "FontString" then sample = child end
+				end
+				assert.matches("^[/#]", sample.text)
+				assert.same({ 0.35, 0.85, 1 }, sample.color)
+				assert.is_nil(sample.text:find("|c", 1, true))
+			end
+		end
+		assert.equals(18, count)
+		local button = exampleButton(world, "#showtooltip Rejuvenation")
+		button:Fire("OnEnter")
+		assert.equals("Add to current macro", world.env.GameTooltip.text)
+		button:Fire("OnLeave")
+		assert.is_false(world.env.GameTooltip.shown)
+	end)
+
+	it("inserts exact plain text at the beginning, middle, and end like native typing", function()
+		for _, case in ipairs({
+			{ cursor = 0, expected = "/cast Spell NameleftRIGHT" },
+			{ cursor = 4, expected = "left/cast Spell NameRIGHT" },
+			{ cursor = 9, expected = "leftRIGHT/cast Spell Name" },
+		}) do
+			local world = Wow.new()
+			world:editor(true)
+			local edit = world.env.MacroFrameText
+			edit:SetText("leftRIGHT")
+			edit:SetCursorPosition(case.cursor)
+			local native = edit.scripts.OnTextChanged
+			loadAddon(world)
+			local changes = edit.nativeTextChanges
+			exampleButton(world, "/cast Spell Name"):Click()
+			assert.equals(case.expected, edit:GetText())
+			assert.equals(case.cursor + #"/cast Spell Name", edit:GetCursorPosition())
+			assert.equals(changes + 1, edit.nativeTextChanges)
+			assert.equals(native, edit.scripts.OnTextChanged)
+			assert.equals(1, world.env.MacroFrame.textChanged)
+		end
+	end)
+
+	it("uses the current selected macro draft at click time and the clicked line's payload", function()
+		local world = Wow.new()
+		local editor = world:editor(true)
+		local edit = world.env.MacroFrameText
+		edit:SetText("old draft")
+		loadAddon(world)
+		local button = exampleButton(world, "/focus")
+		editor.selectedIndex = 2
+		edit:SetText("second")
+		edit:SetCursorPosition(3)
+		button:Click()
+		assert.equals("sec/focusond", edit:GetText())
+		assert.equals(2, editor:GetSelectedIndex())
+		assert.equals(1, edit.insertCalls)
+	end)
+
+	it("lets native Insert replace highlighted text without replacing the whole draft", function()
+		local world = Wow.new()
+		world:editor(true)
+		local edit = world.env.MacroFrameText
+		edit:SetText("one SELECT two")
+		edit:SetCursorPosition(10)
+		edit:HighlightText(4, 10)
+		loadAddon(world)
+		exampleButton(world, "/stopcasting"):Click()
+		assert.equals("one /stopcasting two", edit:GetText())
+		assert.equals(4 + #"/stopcasting", edit:GetCursorPosition())
+		assert.is_nil(edit.selectionStart)
+		assert.equals(1, edit.insertCalls)
+	end)
+
+	it("rejects insufficient headroom without changing the draft, cursor, or selection", function()
+		local world = Wow.new()
+		world:editor(true)
+		local edit = world.env.MacroFrameText
+		local original = string.rep("x", 255)
+		edit:SetText(original)
+		edit:SetCursorPosition(240)
+		edit:HighlightText(240, 255)
+		loadAddon(world)
+		local changes = edit.nativeTextChanges
+		exampleButton(world, "/dismount"):Click()
+		assert.equals(original, edit:GetText())
+		assert.equals(240, edit:GetCursorPosition())
+		assert.equals(240, edit.selectionStart)
+		assert.equals(255, edit.selectionEnd)
+		assert.equals(changes, edit.nativeTextChanges)
+		assert.is_nil(edit.insertCalls)
+		assert.matches("space", world.errors[1])
+	end)
+
+	it("uses native letter counts rather than rejecting a valid multibyte draft by byte length", function()
+		local world = Wow.new()
+		world:editor(true)
+		local edit = world.env.MacroFrameText
+		local original = string.rep("é", 130)
+		edit:SetText(original)
+		loadAddon(world)
+		exampleButton(world, "/dismount"):Click()
+		assert.equals(original .. "/dismount", edit:GetText())
+		assert.equals(139, edit:GetNumLetters())
+		assert.equals(0, #world.errors)
+	end)
+
+	it("allows an exact-fit insertion at the native letter ceiling", function()
+		local world = Wow.new()
+		world:editor(true)
+		local edit = world.env.MacroFrameText
+		local original = string.rep("x", 246)
+		edit:SetText(original)
+		loadAddon(world)
+		exampleButton(world, "/dismount"):Click()
+		assert.equals(original .. "/dismount", edit:GetText())
+		assert.equals(255, edit:GetNumLetters())
+		assert.equals(255, edit:GetCursorPosition())
+		assert.equals(0, #world.errors)
+	end)
+
+	it("also respects a native byte ceiling without truncating multibyte text", function()
+		local world = Wow.new()
+		world:editor(true)
+		local edit = world.env.MacroFrameText
+		edit.maxBytes = 20
+		local original = string.rep("é", 8)
+		edit:SetText(original)
+		edit:SetCursorPosition(2)
+		loadAddon(world)
+		exampleButton(world, "/dismount"):Click()
+		assert.equals(original, edit:GetText())
+		assert.equals(2, edit:GetCursorPosition())
+		assert.is_nil(edit.insertCalls)
+		assert.equals(1, #world.errors)
+	end)
+
+	it("reports unavailable, unselected, disabled, composing, and combat targets without modifying them", function()
+		for _, state in ipairs({ "unavailable", "unselected", "disabled", "hidden", "popup", "composing", "combat" }) do
+			local world = Wow.new()
+			local editor = world:editor(true)
+			local edit = world.env.MacroFrameText
+			edit:SetText("keep this")
+			edit:SetCursorPosition(3)
+			loadAddon(world)
+			if state == "unavailable" then world.env.MacroFrameText = nil
+			elseif state == "unselected" then editor.selectedIndex = nil
+			elseif state == "disabled" then edit.enabled = false
+			elseif state == "hidden" then edit:Hide()
+			elseif state == "popup" then world.env.MacroPopupFrame:Show()
+			elseif state == "composing" then edit.composing = true
+			else world.combat = true end
+			exampleButton(world, "/clearfocus"):Click()
+			assert.equals("keep this", edit:GetText(), state)
+			assert.equals(3, edit:GetCursorPosition(), state)
+			assert.is_nil(edit.insertCalls, state)
+			assert.equals(1, #world.errors, state)
+		end
+	end)
+
+	it("reserves the far-right Add gutter while long examples wrap and reflow", function()
+		local world = Wow.new()
+		world:editor(true)
+		loadAddon(world)
+		local button, text = exampleButton(world,
+			"/cast [@mouseover,help,nodead][help,nodead][@player] Rejuvenation")
+		local height = text:GetStringHeight()
+		assert.is_true(height > button:GetHeight())
+		assert.is_true(text:GetRight() + 8 <= button:GetLeft())
+		world.env.UIParent:SetSize(680, 500)
+		world:event("DISPLAY_SIZE_CHANGED")
+		local scroll = scrollFor(world:panel())
+		assert.is_true(text:GetStringHeight() >= height)
+		assert.is_true(text:GetRight() + 8 <= button:GetLeft())
+		assert.equals(scroll.scrollChild:GetRight(), button:GetRight())
+		scroll:Fire("OnMouseWheel", -10000)
+		assert.equals(scroll:GetVerticalScrollRange(), scroll:GetVerticalScroll())
 	end)
 end)

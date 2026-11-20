@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: Forever Macro Manager
-## Notes: Read-only macro cheat sheet beside Blizzard's macro editor.
+## Notes: Macro cheat sheet with explicit insert-at-cursor controls for Blizzard's editor.
 ## Author: Dylan McCurry
 ## Version: @project-version@
 ## X-Curse-Project-ID: 1819592

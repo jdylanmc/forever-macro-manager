@@ -21,6 +21,34 @@ local function clamp(value, low, high)
 	return math.max(low, math.min(value, high))
 end
 
+local function insertExample(editor, sample)
+	local box = MacroFrameText
+	local message
+	if InCombatLockdown() then
+		message = "Cannot insert a macro example during combat."
+	elseif not box or not editor:GetSelectedIndex() or not box:IsVisible() or not box:IsEnabled()
+		or (MacroPopupFrame and MacroPopupFrame:IsShown()) then
+		message = "Select an editable macro and close its name/icon picker first."
+	elseif box:IsInIMECompositionMode() then
+		message = "Finish composing text before inserting a macro example."
+	else
+		local maxLetters, maxBytes = box:GetMaxLetters(), box:GetMaxBytes()
+		-- UTF-8 leading bytes count characters; Lua's length operator counts bytes.
+		local _, sampleLetters = sample:gsub("[^\128-\193]", "")
+		-- There is no native selection-range getter. Never guess its available space.
+		if (maxLetters > 0 and box:GetNumLetters() + sampleLetters > maxLetters)
+			or (maxBytes > 0 and #box:GetText() + #sample > maxBytes) then
+			message = "Not enough space for this whole example. Shorten the draft first; selection size cannot be checked."
+		end
+	end
+	if message then
+		UIErrorsFrame:AddMessage(message, 1, 0.2, 0.2)
+		return
+	end
+	box:Insert(sample)
+	box:SetFocus()
+end
+
 function ns.CreatePanel(editor)
 	local panel = CreateFrame("Frame", "ForeverMacroManagerCheatSheet", editor, "BackdropTemplate")
 	panel:SetBackdrop({
@@ -41,15 +69,42 @@ function ns.CreatePanel(editor)
 	scroll:SetPoint("BOTTOMRIGHT", -32, 14)
 	local content = CreateFrame("Frame", nil, scroll)
 	scroll:SetScrollChild(content)
-	local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	text:SetPoint("TOPLEFT")
-	text:SetJustifyH("LEFT")
-	text:SetJustifyV("TOP")
-	local sections = {}
-	for _, section in ipairs(ns.REFERENCE) do
-		sections[#sections + 1] = "|cffffd100" .. section.title .. "|r\n\n" .. section.text
+	local rows = {}
+	local function addRow(line, heading)
+		local frame = CreateFrame("Frame", nil, content)
+		local text = frame:CreateFontString(nil, "OVERLAY", heading and "GameFontNormal" or "GameFontHighlight")
+		text:SetPoint("TOPLEFT")
+		text:SetJustifyH("LEFT")
+		text:SetJustifyV("TOP")
+		text:SetText(line)
+		local row = { frame = frame, text = text, blank = line == "" }
+		if heading then
+			text:SetTextColor(1, 0.82, 0)
+		elseif line:match("^[/#]") then
+			text:SetTextColor(0.35, 0.85, 1)
+			text:SetNonSpaceWrap(true)
+			local button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+			button:SetSize(22, 22)
+			button:SetPoint("TOPRIGHT", frame, "TOPRIGHT", 0, 0)
+			button:SetText("+")
+			button:SetScript("OnEnter", function(self)
+				GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+				GameTooltip:SetText("Add to current macro")
+				GameTooltip:AddLine("Insert this exact line at the cursor. No line break is added.", 1, 1, 1, true)
+				GameTooltip:Show()
+			end)
+			button:SetScript("OnLeave", function() GameTooltip:Hide() end)
+			button:SetScript("OnClick", function() insertExample(editor, line) end)
+			row.button = button
+		end
+		rows[#rows + 1] = row
 	end
-	text:SetText(table.concat(sections, "\n\n"))
+	for index, section in ipairs(ns.REFERENCE) do
+		if index > 1 then addRow("") end
+		addRow(section.title, true)
+		addRow("")
+		for line in (section.text .. "\n"):gmatch("(.-)\n") do addRow(line) end
+	end
 
 	local function clampScroll()
 		scroll:SetVerticalScroll(clamp(scroll:GetVerticalScroll(), 0, scroll:GetVerticalScrollRange()))
@@ -57,8 +112,17 @@ function ns.CreatePanel(editor)
 	local function resizeContent()
 		local width = math.max(1, scroll:GetWidth())
 		content:SetWidth(width)
-		text:SetWidth(width)
-		content:SetHeight(text:GetStringHeight() + 8)
+		local offset = 0
+		for _, row in ipairs(rows) do
+			row.frame:SetWidth(width)
+			row.frame:ClearAllPoints()
+			row.frame:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -offset)
+			row.text:SetWidth(math.max(1, width - (row.button and 30 or 0)))
+			local height = row.blank and 8 or math.max(row.text:GetStringHeight(), row.button and 22 or 0) + 4
+			row.frame:SetHeight(height)
+			offset = offset + height
+		end
+		content:SetHeight(offset + 8)
 		clampScroll()
 	end
 	scroll:EnableMouseWheel(true)

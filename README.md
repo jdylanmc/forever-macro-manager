@@ -7,9 +7,25 @@ automatically accompanies it, including general commands, conditions, targeting,
 modifiers, limitations, and druid/healer examples. Closing the editor hides the
 companion; reopening it retains your scroll position.
 
-The panel is reference-only: it does not create, change, delete, or execute your
-macros. There are no saved variables, configuration, or custom editor.
+Each standalone example is light blue, with a **+** control at the far right.
+Select an existing macro, place its editor cursor (or select text), then click
+**+** to insert that exact line, like typing/pasting. No line breaks are added.
+Prose and condition explanations are not insertable commands.
+
+Insertion changes only the current native draft. The addon never creates,
+deletes, executes, or directly saves a macro. Blizzard's **Save** button saves
+the draft, and its normal editor also saves when closing or switching macros/tabs.
+Review your changes before those actions; insertion does not add a separate
+save/confirmation step. There are no saved variables, configuration, or custom editor.
 Icon picker search/filter/sort is a later feature, not included.
+
+Insertion reports an error without changing the draft/cursor/selection if no
+editable macro is selected, the name/icon picker is open, text composition is
+active, combat prevents editing, or the whole example cannot fit. Native letter
+and byte limits apply, including multibyte text. Because the client exposes no
+selection-range getter, the space check conservatively requires room without
+subtracting selected text: shorten a near-limit draft first, even if replacing
+its selection would fit. Otherwise native selection replacement is preserved.
 
 ## Compatibility and placement
 
@@ -42,6 +58,9 @@ CI runs the Lua checks and Node/release-tooling checks as separate jobs.
 Mocked lifecycle tests load files in TOC order, test delayed and existing editor
 loads, inherited visibility, preserved native scripts, single attachment,
 popup placement, scroll bounds, and screen/scale changes.
+They also cover per-line controls, plain insert-at-cursor payloads, native
+selection replacement, dynamic macro selection, limit failures, multibyte
+drafts, unavailable/combat targets, and wrapped examples' button gutter.
 
 ## Releases
 

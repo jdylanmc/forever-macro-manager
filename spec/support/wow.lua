@@ -1,13 +1,17 @@
 local Wow = {}
 
 function Wow.new()
-	local world = { frames = {}, named = {}, namespace = {} }
+	local world = { frames = {}, named = {}, namespace = {}, errors = {} }
+	local function letters(text)
+		local _, count = text:gsub("[^\128-\193]", "")
+		return count
+	end
 	local methods = {}
 	local function frame(kind, name, parent, template)
 		local object = setmetatable({
 			kind = kind, name = name, parent = parent, children = {}, hooks = {},
 			scripts = {}, registered = {}, points = {}, shown = true, scale = 1,
-			width = 0, height = 0, left = 0, bottom = 0, verticalScroll = 0,
+			width = 0, height = 0, left = 0, bottom = 0, verticalScroll = 0, enabled = true,
 		}, { __index = methods })
 		if parent then parent.children[#parent.children + 1] = object end
 		world.frames[#world.frames + 1] = object
@@ -76,9 +80,10 @@ function Wow.new()
 	function methods:GetLeft()
 		if self.unpositioned then return nil end
 		if self.anchorRelative then
-			local left = self.anchorPoint == "TOPLEFT"
-				and self.anchorRelative:GetRight() or self.anchorRelative:GetLeft()
-			return left * self.anchorRelative:GetEffectiveScale() / self:GetEffectiveScale() + self.anchorX
+			local left = self.anchorRelative:GetLeft()
+			if self.anchorRelativePoint:find("RIGHT") then left = self.anchorRelative:GetRight() end
+			local ownOffset = self.anchorPoint:find("RIGHT") and self:GetWidth() or 0
+			return left * self.anchorRelative:GetEffectiveScale() / self:GetEffectiveScale() + self.anchorX - ownOffset
 		end
 		return self.left
 	end
@@ -89,12 +94,10 @@ function Wow.new()
 	function methods:GetBottom()
 		if self.unpositioned then return nil end
 		if self.anchorRelative then
-			if self.anchorPoint == "TOPLEFT" then
-				return self.anchorRelative:GetTop() * self.anchorRelative:GetEffectiveScale() / self:GetEffectiveScale()
-					+ self.anchorY - self:GetHeight()
-			end
-			return self.anchorRelative:GetBottom() * self.anchorRelative:GetEffectiveScale() / self:GetEffectiveScale()
-				+ self.anchorY
+			local bottom = self.anchorRelativePoint:find("TOP")
+				and self.anchorRelative:GetTop() or self.anchorRelative:GetBottom()
+			local ownOffset = self.anchorPoint:find("TOP") and self:GetHeight() or 0
+			return bottom * self.anchorRelative:GetEffectiveScale() / self:GetEffectiveScale() + self.anchorY - ownOffset
 		end
 		return self.bottom
 	end
@@ -109,11 +112,15 @@ function Wow.new()
 	function methods:SetPoint(point, relative, relativePoint, x, y)
 		if type(relative) == "number" then
 			self.points[point] = { relative, relativePoint }
-		elseif relative then
-			assert((point == "BOTTOMLEFT" and relativePoint == "BOTTOMLEFT")
-				or (point == "TOPLEFT" and relativePoint == "TOPRIGHT"))
-			self.anchorRelative, self.anchorX, self.anchorY = relative, x, y
-			self.anchorPoint = point
+			x, y, relative, relativePoint = relative, relativePoint, self.parent, point
+		else
+			self.points[point] = { x or 0, y or 0 }
+			relative, relativePoint = relative or self.parent, relativePoint or point
+		end
+		if relative and (not self.anchorRelative or point == "TOPLEFT") then
+			self.anchorRelative = relative
+			self.anchorX, self.anchorY = x or 0, y or 0
+			self.anchorPoint, self.anchorRelativePoint = point, relativePoint
 		end
 	end
 	function methods:SetScrollChild(child) self.scrollChild = child end
@@ -123,7 +130,45 @@ function Wow.new()
 		return math.max(0, self.scrollChild:GetHeight() - self:GetHeight())
 	end
 	function methods:CreateFontString() return frame("FontString", nil, self) end
-	function methods:SetText(text) self.text = text end
+	function methods:SetText(text)
+		self.text = text
+		if self.kind == "EditBox" then
+			self.cursor, self.selectionStart, self.selectionEnd = #text, nil, nil
+			self:Fire("OnTextChanged", false)
+		end
+	end
+	function methods:GetText() return self.text end
+	function methods:SetTextColor(...) self.color = { ... } end
+	function methods:SetNonSpaceWrap(value) self.nonSpaceWrap = value end
+	function methods:IsEnabled() return self.enabled end
+	function methods:GetSelectedIndex() return self.selectedIndex end
+	function methods:GetMaxLetters() return self.maxLetters or 0 end
+	function methods:GetMaxBytes() return self.maxBytes or 0 end
+	function methods:GetNumLetters() return letters(self.text) end
+	function methods:IsInIMECompositionMode() return self.composing or false end
+	function methods:SetCursorPosition(position)
+		self.cursor, self.selectionStart, self.selectionEnd = position, nil, nil
+	end
+	function methods:GetCursorPosition() return self.cursor end
+	function methods:HighlightText(first, last)
+		self.selectionStart, self.selectionEnd = first or 0, last or #self.text
+	end
+	function methods:SetFocus() self.focused = true end
+	function methods:Insert(text)
+		self.insertCalls = (self.insertCalls or 0) + 1
+		local first, last = self.selectionStart or self.cursor, self.selectionEnd or self.cursor
+		local before, after = self.text:sub(1, first), self.text:sub(last + 1)
+		-- Native Insert can truncate at the configured ceilings.
+		while #text > 0 and ((self:GetMaxLetters() > 0
+			and letters(before .. text .. after) > self:GetMaxLetters())
+			or (self:GetMaxBytes() > 0 and #before + #text + #after > self:GetMaxBytes())) do
+			text = text:sub(1, -2)
+		end
+		self.text = before .. text .. after
+		self.cursor, self.selectionStart, self.selectionEnd = #before + #text, nil, nil
+		self:Fire("OnTextChanged", false)
+	end
+	function methods:Click() self:Fire("OnClick", "LeftButton") end
 	function methods:GetStringHeight()
 		local lines = 0
 		for line in (self.text .. "\n"):gmatch("(.-)\n") do
@@ -140,6 +185,17 @@ function Wow.new()
 
 	world.env = setmetatable({
 		CreateFrame = frame,
+		InCombatLockdown = function() return world.combat or false end,
+		UIErrorsFrame = {
+			AddMessage = function(_, message) world.errors[#world.errors + 1] = message end,
+		},
+		GameTooltip = {
+			SetOwner = function(self, owner) self.owner = owner end,
+			SetText = function(self, text) self.text = text end,
+			AddLine = function(self, line) self.line = line end,
+			Show = function(self) self.shown = true end,
+			Hide = function(self) self.shown = false end,
+		},
 	}, { __index = _G })
 	world.env.UIParent = frame("Frame")
 	world.env.UIParent:SetSize(1280, 800)
@@ -149,6 +205,14 @@ function Wow.new()
 		editor.left, editor.bottom = left or 16, bottom or 300
 		editor.shown = shown
 		self.env.MacroFrame = editor
+		editor.selectedIndex = 1
+		local edit = frame("EditBox", "MacroFrameText", editor)
+		edit.text, edit.cursor, edit.maxLetters = "", 0, 255
+		edit:SetScript("OnTextChanged", function()
+			editor.textChanged = 1
+			edit.nativeTextChanges = (edit.nativeTextChanges or 0) + 1
+		end)
+		self.env.MacroFrameText = edit
 		local popup = frame("Frame", "MacroPopupFrame", editor)
 		popup:SetSize(525, 495)
 		popup:SetPoint("TOPLEFT", editor, "TOPRIGHT", 0, 5)

@@ -100,7 +100,11 @@ Multiple /cast lines do not queue a rotation. Global cooldowns and cast times st
 
 Conditions do not test spell readiness, range, or whether a heal/cleanse is needed. You decide when to press.
 
-This panel is reference-only. It never creates, edits, deletes, or executes macros. Examples were source-reviewed for Forever build 1.60.1.70959, not tested in game by this addon.
+The + beside each blue example inserts that exact line at the native editor's cursor, replacing selected text when space permits. It adds no line breaks. Review the result before using it. No macro is created, deleted, or executed.
+
+Insertion needs enough room for the entire example without subtracting any selected text: the client exposes no selection-range getter. Shorten a near-limit draft first. Native Save, closing the editor, and switching macros/tabs can save your changes.
+
+Examples were source-reviewed for Forever build 1.60.1.70959, not tested in game by this addon.
 
 English spell names shown. Adapt names/ranks to your spellbook.]],
 	},
