@@ -34,6 +34,7 @@ function Wow.new()
 	end
 	function methods:RegisterEvent(event) self.registered[event] = true end
 	function methods:UnregisterEvent(event) self.registered[event] = nil end
+	function methods:UnregisterAllEvents() self.registered = {} end
 	function methods:IsShown() return self.shown end
 	function methods:IsVisible()
 		return self.shown and (not self.parent or self.parent:IsVisible())
@@ -54,6 +55,9 @@ function Wow.new()
 		self.shown = false
 		if visible then visibility(self, "OnHide") end
 	end
+	function methods:SetShown(shown)
+		if shown then self:Show() else self:Hide() end
+	end
 	function methods:SetScale(value) self.scale = value end
 	function methods:GetEffectiveScale()
 		return self.scale * (self.parent and self.parent:GetEffectiveScale() or 1)
@@ -66,13 +70,13 @@ function Wow.new()
 	function methods:SetWidth(value) self.width = value end
 	function methods:SetHeight(value) self.height = value end
 	function methods:GetWidth()
-		if self.kind == "ScrollFrame" and self.points.TOPLEFT and self.points.BOTTOMRIGHT then
+		if self.points.TOPLEFT and self.points.BOTTOMRIGHT then
 			return self.parent:GetWidth() - self.points.TOPLEFT[1] + self.points.BOTTOMRIGHT[1]
 		end
 		return self.width
 	end
 	function methods:GetHeight()
-		if self.kind == "ScrollFrame" and self.points.TOPLEFT and self.points.BOTTOMRIGHT then
+		if self.points.TOPLEFT and self.points.BOTTOMRIGHT then
 			return self.parent:GetHeight() + self.points.TOPLEFT[2] - self.points.BOTTOMRIGHT[2]
 		end
 		return self.height
@@ -154,6 +158,18 @@ function Wow.new()
 		self.selectionStart, self.selectionEnd = first or 0, last or #self.text
 	end
 	function methods:SetFocus() self.focused = true end
+	function methods:ClearFocus() self.focused = false end
+	function methods:SetAutoFocus(value) self.autoFocus = value end
+	function methods:SetMaxLetters(value) self.maxLetters = value end
+	function methods:SetupMenu(callback)
+		self.menu = {}
+		local root = {}
+		function root:CreateRadio(label, selected, action)
+			table.insert(self.options, { label = label, selected = selected, action = action })
+		end
+		root.options = self.menu
+		callback(self, root)
+	end
 	function methods:Insert(text)
 		self.insertCalls = (self.insertCalls or 0) + 1
 		local first, last = self.selectionStart or self.cursor, self.selectionEnd or self.cursor
@@ -196,6 +212,61 @@ function Wow.new()
 			Show = function(self) self.shown = true end,
 			Hide = function(self) self.shown = false end,
 		},
+		hooksecurefunc = function(object, method, hook)
+			local original = object[method]
+			object[method] = function(self, ...)
+				local result = original(self, ...)
+				hook(self, ...)
+				return result
+			end
+		end,
+		Enum = { SpellBookSpellBank = { Player = 0, Pet = 1 },
+			SpellBookItemType = { Spell = 1, FutureSpell = 2, Flyout = 3, PetAction = 4 } },
+		IconDataProviderIconType = { Spell = 1, Item = 2 },
+		INVSLOT_FIRST_EQUIPPED = 1, INVSLOT_LAST_EQUIPPED = 19, NUM_TOTAL_EQUIPPED_BAG_SLOTS = 5,
+		C_UIFileAsset = { GetFileID = function(path)
+			return world.pathIDs and world.pathIDs[path:lower()]
+		end },
+		C_SpellBook = {
+			GetNumSpellBookSkillLines = function()
+				world.spellScans = (world.spellScans or 0) + 1
+				return #(world.skillLines or {})
+			end,
+			GetSpellBookSkillLineInfo = function(index) return world.skillLines[index] end,
+			GetSpellBookItemInfo = function(slot, bank)
+				assert(bank == 0, "Never enumerate the pet spell bank")
+				return world.spellSlots[slot]
+			end,
+		},
+		C_Flyout = {
+			GetFlyoutInfo = function(id) return world.flyouts[id] end,
+			GetFlyoutSlotInfo = function(id, slot) return world.flyouts[id].slots[slot] end,
+		},
+		C_Spell = {
+			GetSpellInfo = function(id) return world.spells[id] end,
+			RequestLoadSpellData = function(id)
+				world.spellRequests = world.spellRequests or {}
+				world.spellRequests[#world.spellRequests + 1] = id
+			end,
+		},
+		GetInventoryItemID = function(_, slot) return (world.equipment or {})[slot] end,
+		C_Container = {
+			GetContainerNumSlots = function(bag)
+				world.bagScans = (world.bagScans or 0) + 1
+				return #((world.bags or {})[bag] or {})
+			end,
+			GetContainerItemID = function(bag, slot) return world.bags[bag][slot] end,
+		},
+		C_Item = {
+			GetItemInfo = function(id)
+				local item = (world.items or {})[id]
+				if item then return item.name, nil, nil, nil, nil, nil, nil, nil, nil, item.icon end
+			end,
+			RequestLoadItemDataByID = function(id)
+				world.itemRequests = world.itemRequests or {}
+				world.itemRequests[#world.itemRequests + 1] = id
+			end,
+		},
 	}, { __index = _G })
 	world.env.UIParent = frame("Frame")
 	world.env.UIParent:SetSize(1280, 800)
@@ -218,7 +289,98 @@ function Wow.new()
 		popup:SetPoint("TOPLEFT", editor, "TOPRIGHT", 0, 5)
 		popup.shown = false
 		self.env.MacroPopupFrame = popup
+		self:picker(popup)
 		return editor, popup
+	end
+	function world:picker(popup)
+		local provider = { filter = { 1, 2 } }
+		function provider:SetIconTypes(types) self.filter = types end
+		function provider:Textures()
+			local source = { "INTERFACE\\ICONS\\INV_MISC_QUESTIONMARK" }
+			for _, category in ipairs(self.filter) do
+				if category == 1 then
+					for _, texture in ipairs(world.extraIcons or {}) do source[#source + 1] = texture end
+				end
+			end
+			for _, category in ipairs(self.filter) do
+				for _, texture in ipairs((world.icons or {})[category] or {}) do
+					source[#source + 1] = texture
+				end
+			end
+			return source
+		end
+		function provider:GetNumIcons() return #self:Textures() end
+		function provider:GetIconByIndex(index) return self:Textures()[index] end
+		function provider:GetIndexOfIcon(texture)
+			for index, icon in ipairs(self:Textures()) do
+				if icon == texture then return index end
+			end
+		end
+		popup.nativeProvider = provider
+		popup.BorderBox = frame("Frame", nil, popup)
+		popup.BorderBox:SetSize(525, 495)
+		popup.BorderBox:SetPoint("TOPLEFT", popup, "TOPLEFT", 0, 0)
+		popup.BorderBox.IconTypeDropdown = frame("DropdownButton", nil, popup.BorderBox)
+		popup.BorderBox.IconSelectorEditBox = frame("EditBox", nil, popup.BorderBox)
+		popup.BorderBox.SelectedIconArea = { SelectedIconButton = {} }
+		local selected = popup.BorderBox.SelectedIconArea.SelectedIconButton
+		function selected:SetIconTexture(texture) self.texture = texture end
+		function selected:GetIconTexture() return self.texture end
+		local selector = frame("Frame", nil, popup)
+		selector:SetSize(494, 361)
+		popup.IconSelector = selector
+		function selector:SetSelectionsDataProvider(getSelection, getCount)
+			self.getSelection, self.getCount = getSelection, getCount
+			self:UpdateSelections()
+		end
+		function selector:UpdateSelections()
+			self.selections = {}
+			if self.getCount then
+				for index = 1, self.getCount() do self.selections[index] = self.getSelection(index) end
+			end
+		end
+		function selector:SetSelectedIndex(index) self.selectedIndex = index end
+		function selector:SetSelectedCallback(callback) self.selectedCallback = callback end
+		function selector:ScrollToSelectedIndex() self.scrolledIndex = self.selectedIndex end
+		function selector:OnSelection(index)
+			self.selectedCallback(index, self.getSelection(index))
+			self:SetSelectedIndex(index)
+		end
+		function popup:GetIconByIndex(index) return self.iconDataProvider:GetIconByIndex(index) end
+		function popup:GetNumIcons() return self.iconDataProvider:GetNumIcons() end
+		function popup:GetIndexOfIcon(texture) return self.iconDataProvider:GetIndexOfIcon(texture) end
+		function popup:ReevaluateSelectedIcon()
+			selector:SetSelectedIndex(self:GetIndexOfIcon(selected:GetIconTexture()))
+		end
+		function popup:UpdateDropdown() self.nativeDropdownCalls = (self.nativeDropdownCalls or 0) + 1 end
+		function popup:UpdateStateFromCursorType()
+			selector:SetShown(world.cursorTexture == nil)
+			self.BorderBox.IconTypeDropdown:SetShown(world.cursorTexture == nil)
+		end
+		popup:SetScript("OnShow", function()
+			popup.nativeShows = (popup.nativeShows or 0) + 1
+			popup.iconDataProvider = provider
+			popup:UpdateStateFromCursorType()
+			provider:SetIconTypes({ 1, 2 })
+			popup:UpdateDropdown()
+			popup.BorderBox.IconSelectorEditBox:SetText(world.newMacro and "" or world.macroName or "Test macro")
+			selected:SetIconTexture(world.macroTexture or provider:GetIconByIndex(1))
+			selector:SetSelectionsDataProvider(function(index) return popup:GetIconByIndex(index) end,
+				function() return popup:GetNumIcons() end)
+			selector:SetSelectedCallback(function(_, texture) selected:SetIconTexture(texture) end)
+			popup:ReevaluateSelectedIcon()
+		end)
+		function popup:OkayButton_OnClick()
+			self:Hide()
+			world.savedMacro = { name = self.BorderBox.IconSelectorEditBox:GetText(), texture = selected:GetIconTexture() }
+		end
+		function popup:CancelButton_OnClick() self:Hide() end
+		-- Native drag updates the selected texture even if no grid index matches it.
+		function popup:SetIconFromMouse()
+			local texture = world.cursorTexture
+			selector:SetSelectedIndex(self:GetIndexOfIcon(texture))
+			selected:SetIconTexture(texture)
+		end
 	end
 	function world:load(file)
 		local chunk = assert(loadfile(file))
@@ -227,6 +389,11 @@ function Wow.new()
 	function world:event(event, ...)
 		for _, object in ipairs(self.frames) do
 			if object.registered[event] then object:Fire("OnEvent", event, ...) end
+		end
+	end
+	function world:tick()
+		for _, object in ipairs(self.frames) do
+			if object:IsVisible() then object:Fire("OnUpdate", 0.016) end
 		end
 	end
 	function world:panel() return self.named.ForeverMacroManagerCheatSheet end

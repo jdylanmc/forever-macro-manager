@@ -17,6 +17,7 @@ local function attach()
 	MacroFrame:HookScript("OnSizeChanged", layout)
 	MacroFrame:HookScript("OnDragStop", layout)
 	if MacroPopupFrame then
+		ns.AttachIconPicker(MacroPopupFrame)
 		MacroPopupFrame:HookScript("OnShow", layout)
 		MacroPopupFrame:HookScript("OnHide", layout)
 		MacroPopupFrame:HookScript("OnDragStop", layout)

@@ -17,7 +17,6 @@ deletes, executes, or directly saves a macro. Blizzard's **Save** button saves
 the draft, and its normal editor also saves when closing or switching macros/tabs.
 Review your changes before those actions; insertion does not add a separate
 save/confirmation step. There are no saved variables, configuration, or custom editor.
-Icon picker search/filter/sort is a later feature, not included.
 
 Insertion reports an error without changing the draft/cursor/selection if no
 editable macro is selected, the name/icon picker is open, text composition is
@@ -26,6 +25,39 @@ and byte limits apply, including multibyte text. Because the client exposes no
 selection-range getter, the space check conservatively requires room without
 subtracting selected text: shorten a near-limit draft first, even if replacing
 its selection would fit. Otherwise native selection replacement is preserved.
+
+## Native icon picker
+
+Use Blizzard's **New** or **Change Name/Icon** popup. Search and sorting live
+inside that popup; the macro name, selected icon, drag/drop, **Okay**, and
+**Cancel** remain native. Searching or filtering never changes the selected
+texture, even when it disappears from the grid. Clicking a result selects its
+actual texture; only the normal native confirmation performs the name/icon save.
+
+- Search is case-insensitive, literal partial matching against icon IDs and
+  associated names. IDs are **texture file IDs**, not spell or item IDs.
+- **Names are partial:** only learned player spells and currently equipped/bag
+  items supply names. All available names sharing a texture can match it.
+  This is not whole-game spell/item name search.
+- Paths resolve to numeric IDs when the client supports resolution. Unresolved
+  paths have no claimed numeric ID/name; search their path text instead. The
+  status reports unresolved paths in the current category (even when search
+  hides them), plus unavailable item/spell names.
+- Filters: **All Icons**, **Spell Icons**, **Item Icons**, and
+  **My Character's Spells**. The first three keep Blizzard's own source
+  sequences, including duplicates. My Spells includes learned player spells,
+  passives, low ranks, and known flyout members/overrides, not pet or future
+  spells. It ignores spellbook display settings. It retains native matches in
+  native order and appends any missing learned textures in spellbook order.
+- **Blizzard Order** is the default. **Name A-Z** uses the first known name in
+  case-insensitive alphabetical order, with unnamed icons last. **Icon ID**
+  sorts numerically, unresolved paths last. Ties retain their source order.
+
+Metadata is session-only. Opening the popup indexes bounded player spellbook,
+equipment, and carried bag slots; relevant events refresh that metadata while
+open. Missing item/spell data loads asynchronously without blocking or retry loops.
+Typing searches the existing index, not item/spell ID spaces. Closing and
+reopening resets search, filter and sort; nothing is persisted or downloaded.
 
 ## Compatibility and placement
 
@@ -61,6 +93,33 @@ popup placement, scroll bounds, and screen/scale changes.
 They also cover per-line controls, plain insert-at-cursor payloads, native
 selection replacement, dynamic macro selection, limit failures, multibyte
 drafts, unavailable/combat targets, and wrapped examples' button gutter.
+Picker tests exercise native lifecycle/provider lookup, duplicate order,
+associated names/IDs/paths, all filters, stable sorting, missing/asynchronous
+metadata, hidden selections, native confirmation/Cancel, and fixed popup bounds.
+These are source-contract simulations, **not in-game proof**.
+
+### In-game acceptance still required
+
+On the supported client, with no account macro-file edits:
+
+1. Open New and Change Name/Icon; check name focus, grid scrolling and every
+   filter/sort. Check layout on the current screen and at different UI scales.
+   The native name, selected icon, Okay/Cancel and companion must remain usable.
+2. Find an icon by a learned spell/passive/rank/flyout name, an equipped/bag
+   item's name and a known texture ID. Try mixed case and literal `%`/`[`.
+   Check partial-name and empty-result guidance.
+3. Check My Spells with passives/low ranks hidden in the spellbook, and with a
+   pet present. Learned player icons should remain; unlearned/pet-only icons
+   should not enter that filter.
+4. Select an icon, filter it out, and confirm: its texture/name must survive.
+   Choose a sorted result and confirm its actual texture saves. Cancel another
+   change and verify nothing was saved.
+5. Drag a native supported spell/item onto the popup during a filtered search;
+   verify its selected texture survives filtering and saves normally.
+6. Equip/remove or acquire an item; learn/change a spell while open. Verify
+   names refresh, including delayed item metadata, without typing stalls.
+7. Reopen the popup, verify default order/reset, then recheck cyan **+**
+   insertion with the picker closed and its non-destructive refusal while open.
 
 ## Releases
 

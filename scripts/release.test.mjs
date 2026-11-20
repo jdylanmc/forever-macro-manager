@@ -89,7 +89,10 @@ test('package contains all namespace modules in load order, without client confi
   assert.match(toc, /## Version: @project-version@/);
   assert.doesNotMatch(toc, /SavedVariables|OptionalDeps|LoadOnDemand/i);
   const modules = toc.split(/\r?\n/).filter(line => line && !line.startsWith('#'));
-  assert.deepEqual(modules, ['Changelog.lua', 'Reference.lua', 'Panel.lua', 'Core.lua']);
+  assert.deepEqual(modules, [
+    'Changelog.lua', 'Reference.lua', 'Panel.lua',
+    'IconMetadata.lua', 'IconCatalog.lua', 'IconPicker.lua', 'Core.lua',
+  ]);
   for (const module of modules) assert.ok(read(module).length > 0);
   assert.match(read('.pkgmeta'), /^package-as: ForeverMacroManager/m);
   assert.deepEqual(readdirSync(fileURLToPath(root)).filter(name => name.endsWith('.toc')),
