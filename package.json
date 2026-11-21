@@ -1,0 +1,23 @@
+{
+  "name": "forever-macro-manager",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Macro editor companion for World of Warcraft: Forever",
+  "license": "MIT",
+  "repository": "github:jdylanmc/forever-macro-manager",
+  "scripts": {
+    "changeset": "changeset",
+    "version": "changeset version && node scripts/build-changelog.mjs",
+    "changelog:build": "node scripts/build-changelog.mjs",
+    "changelog:check": "node scripts/build-changelog.mjs --check",
+    "test": "busted",
+    "test:scripts": "node --test scripts/*.test.mjs",
+    "lint": "luacheck ."
+  },
+  "devDependencies": {
+    "@changesets/cli": "^3.0.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

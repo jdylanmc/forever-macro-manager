@@ -1,0 +1,15 @@
+## Interface: 16001
+## Title: Forever Macro Manager
+## Notes: Macro cheat sheet and native icon search, filters and sorting.
+## Author: Dylan McCurry
+## Version: @project-version@
+## X-Curse-Project-ID: 1819592
+
+Changelog.lua
+Reference.lua
+Panel.lua
+IconKeywords.lua
+IconMetadata.lua
+IconCatalog.lua
+IconPicker.lua
+Core.lua

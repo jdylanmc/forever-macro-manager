@@ -1,0 +1,25 @@
+package-as: ForeverMacroManager
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+ignore:
+  - .changeset
+  - .github
+  - .gitattributes
+  - .gitignore
+  - .luacheckrc
+  - .tools
+  - .lua
+  - .luarocks
+  - .install
+  - AGENTS.md
+  - CHANGELOG.md
+  - README.md
+  - docs
+  - node_modules
+  - package.json
+  - package-lock.json
+  - scripts
+  - spec
