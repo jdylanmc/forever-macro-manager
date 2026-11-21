@@ -73,16 +73,35 @@ local function open(world, popup)
 end
 
 describe("native macro icon picker enhancement", function()
+	it("finds corrected native objects through the generated lookup without filename or learned-name substitutes", function()
+		local world, popup = fixture()
+		world.icons = { {
+			396545, 643858, 797509, 1125284, 2835966, 133246,
+			1716872, 1716878, 2399256, 3946881, 134064,
+		}, {} }
+		local ui = open(world, popup)
+		for query, expected in pairs({
+			fish = { 396545 },
+			shield = { 643858, 797509 },
+			sword = { 1125284, 2835966 },
+			food = {},
+			utensil = {},
+		}) do
+			ui.search:SetText(query)
+			assert.same(expected, popup.IconSelector.selections, query)
+		end
+	end)
+
 	it("finds grounded color/object keywords with literal AND terms, including concrete low-confidence tags", function()
 		local world, popup = fixture()
-		world.icons = { { 236526, 135383, 132806, 3565444, 804461, 4622456 }, { 236526 } }
+		world.icons = { { 236526, 135383, 132791, 840405, 804461, 132806 }, { 236526 } }
 		local ui = open(world, popup)
 		for query, expected in pairs({
 			[" GREEN \t shield "] = { 236526, 236526 },
 			["blue sword"] = { 135383 },
-			["drink"] = { 132806 },
-			["lightning"] = { 3565444 },
-			["orange paired"] = { 4622456 },
+			["drink"] = { 132791 },
+			["lightning"] = { 840405 },
+			["brown bucket"] = { 132806 },
 			["green sword drink"] = {},
 			[".*"] = {},
 			["["] = {},

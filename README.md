@@ -40,13 +40,16 @@ actual texture; only the normal native confirmation performs the name/icon save.
   names/tags. Try `green shield`, `drink`, or `blue sword`. Punctuation is
   literal, not a regular expression. IDs are **texture file IDs**, not spell or
   item IDs.
-- **Visual keywords are a first batch:** 576 visually reviewed images from a
-  broad World of Warcraft community sample, not the native Forever catalogue.
-  Only matching native/learned rows gain keywords; the sample adds no picker
-  icons. Native Forever coverage is unknown and may be small. Colors, objects
-  and visible effects are descriptions, not spell/item identities or mechanics.
-  Uncertain candidate interpretations are not searchable. Untagged icons still
-  support the normal ID/name/path search.
+- **Visual keywords cover the exported native build 71037 catalogue:** all
+  27,715 unique texture IDs, from 27,765 provider rows with 50 duplicates.
+  Original reviews cover 27,225 extracted visuals (27,711 IDs, including 486
+  exact-pixel aliases) and four separately captured native-interface visuals.
+  The index also preserves 160 non-native original sample records: 27,875 IDs
+  total, not extra picker rows. Colors, objects and visible effects describe
+  appearance, not spell/item identities or mechanics; uncertain interpretations
+  are not searchable. Coverage is specific to this export, not future builds or
+  every character's additional learned icons. Other textures retain normal
+  ID/name/path search. See [source limits](docs/sources.md#offline-visual-keyword-corpus).
 - **Names are partial:** only learned player spells and currently equipped/bag
   items supply names. All available names sharing a texture can match it.
   This is not whole-game spell/item name search.
@@ -96,7 +99,7 @@ LuaRocks, luacheck, and busted are required for Lua validation.
 npm ci
 npm run test:scripts
 npm run changelog:check
-node scripts/build-icon-keywords.mjs --check
+node scripts/build-icon-keywords.mjs --check --require-native
 luacheck .
 busted
 ```
@@ -119,6 +122,15 @@ text data, edit that file, run `node scripts/build-icon-keywords.mjs`, then run
 the checks above. Node tests reject stale generated data. Do not add artwork.
 These are source-contract simulations, **not in-game proof**.
 
+`docs/native-icons-71037.json` pins every target ID and the source-export hash,
+separately from the annotations. Ordinary `npm run test:scripts` requires that
+entire target set, valid extracted/screenshot review proof, all 572 accepted
+native-sheet hashes, and the 160 unchanged non-native originals. Lua tests load
+the full generated lookup and exercise corrected fish/shield/sword queries,
+false-positive exclusions, native interactions and existing name/ID behavior.
+Membership alone does not establish semantic accuracy; original image review
+and source identity remain part of data acceptance. Artwork is never bundled.
+
 ### In-game acceptance still required
 
 On the supported client, with no account macro-file edits:
@@ -128,8 +140,8 @@ On the supported client, with no account macro-file edits:
    The native name, selected icon, Okay/Cancel and companion must remain usable.
 2. Find an icon by a learned spell/passive/rank/flyout name, an equipped/bag
    item's name and a known texture ID. Try mixed case and literal `%`/`[`.
-   Check partial-name and empty-result guidance. Where a matching sampled
-   texture exists, try `green shield`, `drink`, and `blue sword`; a missing
+   Check partial-name and empty-result guidance. Try `green shield`, `drink`,
+   `blue sword`, and `fish`; a missing
    keyword result does not mean the native picker lacks that kind of icon.
 3. Check My Spells with passives/low ranks hidden in the spellbook, and with a
    pet present. Learned player icons should remain; unlearned/pet-only icons

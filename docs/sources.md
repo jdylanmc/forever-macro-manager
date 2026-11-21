@@ -120,17 +120,52 @@ Unit fixtures model these source contracts only. Actual client access, taint,
 flyout/rank behavior, response time, layout, drag/drop and saving still require
 the README's in-game acceptance checks.
 
-## Original visual keyword batch
+## Offline visual keyword corpus
 
-`icon-keywords.json` contains original English visual annotations for **576**
-individually reviewed images. `IconKeywords.lua` is its compact generated
+`icon-keywords.json` indexes **27,875 texture IDs**: every **27,715 unique
+native ID** exported from build **71037**, plus **160 unchanged non-native
+original sample records**. The export has **27,765 provider rows** and **50
+duplicates**; offline review deduplicates identity, not runtime provider rows.
+
+- **27,711 native IDs** use fresh unencrypted local FileDataID extraction,
+  yielding **27,225 distinct visuals** and **486 exact-pixel alias IDs**. Source
+  BLP hashes/content keys, review-image hashes and dimension-prefixed unscaled
+  first-mipmap RGBA hashes retain per-ID provenance. Only byte-identical decoded
+  pixels of the same dimensions share a reviewed representative. Acquisition
+  acceptance independently verified every source/image and alias; visual owners
+  reviewed every representative across **13 shards / 572 sheets**.
+- **Four native IDs** (2147656, 2741548, 2892271, 8119728) use separately
+  supplied normal-interface screenshot crops. The original is **2883×1501**;
+  each target crop is **80×80**. Parent capture acceptance independently checked
+  exact RGBA crop equality and image/pixel hashes. These are UI-scaled/composited
+  screenshot pixels, not extracted BLP/content-key proof. Visible labels and the
+  user-executed `Texture:SetTexture` command establish render identity; build
+  evidence is separate, not text printed in the screenshot. The actual
+  question-mark control 134400 adds no screenshot coverage and retains its
+  ordinary extracted review.
+- **160 original non-native records** retain their earlier community-source
+  limitations and exact original annotations/provenance. All **416** native
+  overlaps from that pilot were replaced by fresh native review, not unioned
+  with unsupported older guesses.
+
+`IconKeywords.lua` is the canonical data's compact generated
 search-only projection: the deduplicated union of `colors`, `objects`,
 `visualThemes` and `keywords`. Confidence, explicit `uncertain` candidates and
 notes remain in the canonical JSON, not in the searchable projection. Supported
 concrete tags remain searchable even when the overall interpretation has
-medium/low confidence. No names or gameplay mechanics are inferred from art.
+medium/low confidence. Empty `keywords` is valid when another supported field
+is nonempty; there is no separate keyword quota. No names or gameplay mechanics
+are inferred from art. **296 native IDs have the explicit `fish` tag**; that is
+an annotation statistic, not an exact live UI result count for literal `fish`.
+The matcher can also match substrings, names and the current provider's rows.
 
-Identity and provenance:
+Coverage is specific to the exported provider/build and its extras. Future
+builds, every character's additional learned icons, runtime rendering, client
+taint/layout and installed behavior are not proved by offline review/tests.
+Keywords annotate only existing native/learned rows; no runtime catalogue
+download, ID scan or sample-icon injection occurs.
+
+### Original community sample provenance
 
 - The community [wowdev interface listfile](https://raw.githubusercontent.com/wowdev/wow-listfile/fda564ff2795a7fb927e0c1d52fd755a847c6ee2/parts/interface.csv)
   is pinned to `fda564ff2795a7fb927e0c1d52fd755a847c6ee2`, downloaded SHA256
@@ -149,20 +184,114 @@ Identity and provenance:
   the first 120 per stratum were fetched and the first 72 successful distinct
   image hashes selected. This is a broad World of Warcraft sample, including
   modern expansions, **not an export of the native Forever picker**.
-- Native membership and build-specific pixel identity remain unverified. Only
-  exact resolved texture IDs already supplied by the existing native/learned
-  provider view receive tags. No runtime catalogue download or ID scan occurs;
-  unresolvable paths do not acquire speculative filename-based tags.
+- This historical selection/mapping method is retained under canonical
+  `provenance.legacySample` for the 160 preserved non-native records, not used
+  as proof for the freshly reviewed native corpus. Source filenames are
+  supplemental identity metadata, never a visual-keyword substitute.
 - Public artwork access is not redistribution permission. No images, contact
   sheets, external descriptions, catalogue code or bulk DB2 tables are included.
   This delivery includes original text annotations and identity/provenance
   metadata only. The source filenames are evidence, not visual search claims.
 
+### Native coverage and regeneration
+
+`native-icons-71037.json` preserves the sorted unique numeric IDs from that
+export, its row/duplicate counts and SHA256
+`2f8d47178dcf4aa4d174bd923b46bb9961db5a91758259332341a7c969d4d9e3`.
+It contains no account/character identifiers or artwork. The target is specific
+to the exported provider and build, not a claim about all future builds or
+every character's additional learned icons.
+
+The generator reports native coverage separately from total indexed IDs:
+**27,715/27,715**, zero missing, 160 non-native originals. `--require-native`
+rejects an actually missing target even if unrelated IDs keep corpus size high.
+Ordinary `npm run test:scripts` also enforces that entire independent target set,
+appropriate source proof and exact accepted native-sheet hash set, validates
+alias representatives, and checks unchanged original non-native records by
+their independently captured hash. It does not rely on an optional CLI flag
+or count alone. Lua tests load the real full generated lookup and use the
+existing picker matcher for ID-specific fish/shield/sword regression queries
+and known false-positive exclusions.
+
+Canonical `provenance.nativeReview` records the accepted extraction, corrected
+sheet receipt/worker-report pins, screenshot capture/annotation and screenshot
+hashes. The native extraction manifest is
+`24216ad1a256bcd0d2933218cac9458016b088345e761b3aa2287a6bc460ed77`;
+the final corrected annotation receipt is
+`111d360640526e84dcf0b223afc347d70b7eca921c29a7053b672733fdaa9be0`.
+Review hashes identify the accepted original review bytes; they are not
+artwork distribution or proof of every possible semantic interpretation.
+
+The annotation schema retains the original records and their shared community
+provenance. A new record may override source identity with `source`:
+`kind` (`client-file-data-id`, `public-filename` or
+`normal-client-UI-rendered-screenshot`), `reference` (publishable
+source/evidence identifier) and `identityLimit` (actual remaining limitations).
+Client-ID sources also require `build`. A client source can retain a known
+`originalPath` with explicit `mappingLine: null` when no listfile line was
+recovered; unknown paths are also explicit `null`. Public filename sources
+still require the path and mapping line and do not prove native pixels.
+Review batches use lowercase hyphen-separated identifiers; native labels retain
+their exact string form, such as `0001-01`, without changing old numeric labels.
+
+`scripts/import-native-icon-keywords.mjs` adapts the actual sealed acquisition
+manifests and version 2 per-sheet reviews. Its read-only `--check-acquisition
+INDEX EXPECTED_SHA256` command authenticates the supplied index, asset/visual
+manifests, every shard, sheet mapping and contact-sheet image by their supplied
+hashes. It verifies the complete success/gap partition against the target,
+unique assignments, representative/member identities, per-ID source evidence
+and exact-pixel hash/dimension agreement. Individual source/image bytes were
+independently verified during acquisition acceptance; this adapter consumes
+that trusted evidence, not an arbitrary unverified manifest.
+
+The exported `importNativeSheet` reads a parent-accepted review path and its
+expected SHA256, rejects missing/skipped/unassigned/mismatched reviews, and
+expands only the acquisition-proven aliases. Its returned canonical records
+retain each ID's original path, source BLP SHA256, content key, image hash,
+normalized-pixel hash and build, plus reviewed representative and manifest,
+sheet/mapping and annotation hashes. These proof fields must be complete when
+present. Local source/image/archive/sheet paths are not copied into records;
+private paths in original annotation text cause rejection, not silent rewriting.
+
+`integrateNativeReviews` combines only explicitly accepted sheets with old
+non-native originals, replacing rather than unioning old native guesses.
+Completeness is required by default; a deliberately partial in-memory candidate
+can be requested for review. Neither the adapter CLI nor these library functions
+writes canonical or generated files. The final corpus consumes all 572
+hash-bound corrected native reviews and the four hash-bound screenshot reviews.
+The four extraction gaps are not excluded or given fallback annotations.
+
+`loadScreenshotCapture` accepts the additive, hash-bound screenshot manifest,
+verifies screenshot/crop bytes and sealed-extraction anchors, and requires its
+target set to equal the extraction gaps exactly. Render control 134400 never
+adds coverage; targets must remain singletons. Crop boxes use zero-based source
+pixels with exclusive right/bottom bounds, checked against original screenshot
+dimensions. Parent capture acceptance independently established exact RGBA crop
+equality and pixel hashes; this metadata adapter does not decode or re-render
+the screenshot.
+
+`importScreenshotReview` binds actual reviewed annotation bytes to that capture.
+Its distinct source type retains screenshot hash/dimensions, crop rectangle,
+screenshot-scoped RGBA/normalized hashes, visible label, user render command,
+identity/build evidence and source limitations. Local paths and artwork stay
+out. No BLP source hash, content key or archive-verification claim is invented
+or accepted for this type. Normal UI scaling/compositing already present in
+the screenshot is explicit, and the separately established build is not
+misrepresented as text printed in the capture. The optional `screenshotReview`
+argument to `integrateNativeReviews` accepts only this same extraction's exact
+gap set. Extraction proof for the other 27,711 IDs remains unchanged and strict.
+
+Only the four supported visual fields enter generated Lua. Source metadata,
+builds, paths, hashes, confidence, notes and uncertainty are not search terms.
+Keep local paths, extraction response data, assets and contact sheets out of
+canonical records. Revisions still require source identity and independent
+semantic review; the membership gate cannot establish those facts by itself.
+
 ### Spell/item name research held back
 
 Research inspected **28 factual name associations across 21 textures** from
 Wago-served DB2 rows requested for build **1.60.1.70959**, observed English with
-locale unspecified. Only one texture overlaps this visual batch. Relevant
+locale unspecified. Only one texture overlapped the original 576-image pilot. Relevant
 tables were [SpellMisc](https://wago.tools/db2/SpellMisc/csv?build=1.60.1.70959),
 [SpellName](https://wago.tools/db2/SpellName/csv?build=1.60.1.70959),
 [ItemSparse](https://wago.tools/db2/ItemSparse/csv?build=1.60.1.70959),
