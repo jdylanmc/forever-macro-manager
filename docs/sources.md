@@ -120,6 +120,62 @@ Unit fixtures model these source contracts only. Actual client access, taint,
 flyout/rank behavior, response time, layout, drag/drop and saving still require
 the README's in-game acceptance checks.
 
+## Original visual keyword batch
+
+`icon-keywords.json` contains original English visual annotations for **576**
+individually reviewed images. `IconKeywords.lua` is its compact generated
+search-only projection: the deduplicated union of `colors`, `objects`,
+`visualThemes` and `keywords`. Confidence, explicit `uncertain` candidates and
+notes remain in the canonical JSON, not in the searchable projection. Supported
+concrete tags remain searchable even when the overall interpretation has
+medium/low confidence. No names or gameplay mechanics are inferred from art.
+
+Identity and provenance:
+
+- The community [wowdev interface listfile](https://raw.githubusercontent.com/wowdev/wow-listfile/fda564ff2795a7fb927e0c1d52fd755a847c6ee2/parts/interface.csv)
+  is pinned to `fda564ff2795a7fb927e0c1d52fd755a847c6ee2`, downloaded SHA256
+  `3ca3ad1f1b7698fad784ceab80f267793b1159b2d528c048e6f59b93c9ed8a91`.
+  Rows retain exact FileDataID, original path and mapping line. Community
+  filename mappings are not authoritative client pixel verification; see the
+  [pinned source README](https://github.com/wowdev/wow-listfile/blob/fda564ff2795a7fb927e0c1d52fd755a847c6ee2/README.md).
+- Each lowercase BLP filename stem was joined to
+  `https://wow.zamimg.com/images/wow/icons/large/{stem}.jpg` for local visual
+  inspection. Each record retains the acquired image SHA256 and original
+  review batch/label. Filename matching does **not** prove byte/pixel equality
+  with that FileDataID in an installed client.
+- Eight filename-defined strata contributed 72 images each: abilities, spells,
+  weapons, armor, food/consumables, miscellaneous inventory, achievements and
+  other. Candidates were ordered by SHA256 of the lowercase original path;
+  the first 120 per stratum were fetched and the first 72 successful distinct
+  image hashes selected. This is a broad World of Warcraft sample, including
+  modern expansions, **not an export of the native Forever picker**.
+- Native membership and build-specific pixel identity remain unverified. Only
+  exact resolved texture IDs already supplied by the existing native/learned
+  provider view receive tags. No runtime catalogue download or ID scan occurs;
+  unresolvable paths do not acquire speculative filename-based tags.
+- Public artwork access is not redistribution permission. No images, contact
+  sheets, external descriptions, catalogue code or bulk DB2 tables are included.
+  This delivery includes original text annotations and identity/provenance
+  metadata only. The source filenames are evidence, not visual search claims.
+
+### Spell/item name research held back
+
+Research inspected **28 factual name associations across 21 textures** from
+Wago-served DB2 rows requested for build **1.60.1.70959**, observed English with
+locale unspecified. Only one texture overlaps this visual batch. Relevant
+tables were [SpellMisc](https://wago.tools/db2/SpellMisc/csv?build=1.60.1.70959),
+[SpellName](https://wago.tools/db2/SpellName/csv?build=1.60.1.70959),
+[ItemSparse](https://wago.tools/db2/ItemSparse/csv?build=1.60.1.70959),
+[ItemModifiedAppearance](https://wago.tools/db2/ItemModifiedAppearance/csv?build=1.60.1.70959)
+and [ItemAppearance](https://wago.tools/db2/ItemAppearance/csv?build=1.60.1.70959).
+Server-requested rows are not independently extracted client bytes or a
+validated full-table catalogue. No source redistribution license was established.
+These associations are **not shipped**: permission/provenance suitable for
+publication was not established by that research. This conservative holdback
+does not assert that individual factual associations are copyrightable.
+Existing localized learned-player/equipped/bag names remain unchanged; this
+feature does not claim additional or complete static spell/item names.
+
 ## Release tooling
 
 Adapted from Dylan McCurry's MIT-licensed

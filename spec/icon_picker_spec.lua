@@ -73,6 +73,77 @@ local function open(world, popup)
 end
 
 describe("native macro icon picker enhancement", function()
+	it("finds grounded color/object keywords with literal AND terms, including concrete low-confidence tags", function()
+		local world, popup = fixture()
+		world.icons = { { 236526, 135383, 132806, 3565444, 804461, 4622456 }, { 236526 } }
+		local ui = open(world, popup)
+		for query, expected in pairs({
+			[" GREEN \t shield "] = { 236526, 236526 },
+			["blue sword"] = { 135383 },
+			["drink"] = { 132806 },
+			["lightning"] = { 3565444 },
+			["orange paired"] = { 4622456 },
+			["green sword drink"] = {},
+			[".*"] = {},
+			["["] = {},
+			["%"] = {},
+			["bat-like"] = {},
+		}) do
+			ui.search:SetText(query)
+			assert.same(expected, popup.IconSelector.selections, query)
+		end
+		assert.equals(1, world.spellScans)
+		assert.equals(6, world.bagScans)
+	end)
+
+	it("combines terms across live names, keywords and IDs without turning keywords into sort names", function()
+		local world, popup = fixture()
+		world.icons = { { 236526, 300, 135383, LOOSE }, {} }
+		world.spellSlots[1].name = "Ward Slot"
+		world.spells[1] = { name = "Zebra Ward", iconID = 236526 }
+		local ui = open(world, popup)
+		ui.search:SetText("ward green 2365")
+		assert.same({ 236526 }, popup.IconSelector.selections)
+		ui.search:SetText("alpha 300")
+		assert.same({ 300 }, popup.IconSelector.selections)
+		ui.search:SetText("icons\\loose")
+		assert.same({ LOOSE }, popup.IconSelector.selections)
+		ui.search:SetText("")
+		choose(ui.sort, "Name A-Z")
+		assert.same({ 300, 236526, QUESTION, 135383, LOOSE }, popup.IconSelector.selections)
+		world.spells[1].name = "Updated Ward"
+		world:event("SPELLS_CHANGED")
+		world:tick()
+		ui.search:SetText("updated green")
+		assert.same({ 236526 }, popup.IconSelector.selections)
+		ui.search:SetText("zebra green")
+		assert.same({}, popup.IconSelector.selections)
+	end)
+
+	it("annotates only native rows and preserves hidden selection and native save after keyword search", function()
+		local world, popup = fixture()
+		world.icons = { { 236526, 300, 236526 }, { 999 } }
+		world.macroTexture, world.macroName = 300, "Original name"
+		local ui = open(world, popup)
+		ui.search:SetText("blue sword")
+		assert.same({}, popup.IconSelector.selections)
+		ui.search:SetText("green shield")
+		assert.same({ 236526, 236526 }, popup.IconSelector.selections)
+		assert.equals(300, popup.BorderBox.SelectedIconArea.SelectedIconButton:GetIconTexture())
+		assert.is_nil(world.savedMacro)
+		popup.IconSelector:OnSelection(2)
+		popup:OkayButton_OnClick()
+		assert.same({ name = "Original name", texture = 236526 }, world.savedMacro)
+		popup:Show()
+		ui.search:SetText("")
+		assert.same({ QUESTION, 236526, 300, 236526, 999 }, popup.IconSelector.selections)
+		choose(ui.filter, "Item Icons")
+		ui.search:SetText("green shield")
+		assert.same({}, popup.IconSelector.selections)
+		popup:CancelButton_OnClick()
+		assert.same({ name = "Original name", texture = 236526 }, world.savedMacro)
+	end)
+
 	it("maps the native grid through one ordered provider, retains duplicates and restores it on close", function()
 		local world, popup = fixture()
 		world.extraIcons = { 700, 300 }
@@ -100,7 +171,7 @@ describe("native macro icon picker enhancement", function()
 		world.bags[5] = { 55 }
 		world.items[55] = { name = "Carried Reagent", icon = 999 }
 		local ui = open(world, popup)
-		for _, query in ipairs({ "ZEB", "alpha", "another NAME", "rank 2" }) do
+		for _, query in ipairs({ "ZEB", "alpha", "another NAME", "rank 2", "zebra alpha" }) do
 			ui.search:SetText(query)
 			assert.same({ 300, 300, 300 }, popup.IconSelector.selections)
 		end

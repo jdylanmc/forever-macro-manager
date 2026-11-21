@@ -1,5 +1,16 @@
 local _, ns = ...
 
+local function matchesAll(terms, fields)
+	for _, term in ipairs(terms) do
+		local found = false
+		for _, field in ipairs(fields) do
+			if field:find(term, 1, true) then found = true; break end
+		end
+		if not found then return false end
+	end
+	return true
+end
+
 function ns.CreateIconCatalog(provider, metadata)
 	local catalog = { filter = "all", sort = "original", query = "" }
 	local categories = {
@@ -23,7 +34,8 @@ function ns.CreateIconCatalog(provider, metadata)
 		local textures = self.categories[self.filter] or self.categories.all
 		local rows, seen = {}, {}
 		self.unresolved = 0
-		local query = self.query:lower()
+		local terms = {}
+		for term in self.query:lower():gmatch("%S+") do terms[#terms + 1] = term end
 		local function add(texture, sequence)
 			local key = metadata:Identity(texture)
 			seen[key] = true
@@ -32,17 +44,16 @@ function ns.CreateIconCatalog(provider, metadata)
 			local representative, representativeLower
 			local id = type(key) == "number" and key or nil
 			if not id then self.unresolved = self.unresolved + 1 end
-			local matches = query == "" or (id and tostring(id):find(query, 1, true))
-				or (type(key) == "string" and key:find(query, 1, true))
+			local searchable = { tostring(key), ns.IconKeywords[key] or "" }
 			for name in pairs(names) do
 				local lower = name:lower()
-				if lower:find(query, 1, true) then matches = true end
+				searchable[#searchable + 1] = lower
 				if not representative or lower < representativeLower
 					or (lower == representativeLower and name < representative) then
 					representative, representativeLower = name, lower
 				end
 			end
-			if matches then
+			if matchesAll(terms, searchable) then
 				rows[#rows + 1] = { texture = texture, key = key, id = id, name = representativeLower, sequence = sequence }
 			end
 		end

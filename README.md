@@ -34,8 +34,19 @@ inside that popup; the macro name, selected icon, drag/drop, **Okay**, and
 texture, even when it disappears from the grid. Clicking a result selects its
 actual texture; only the normal native confirmation performs the name/icon save.
 
-- Search is case-insensitive, literal partial matching against icon IDs and
-  associated names. IDs are **texture file IDs**, not spell or item IDs.
+- Search is case-insensitive, literal partial matching against icon IDs,
+  associated names, and available English visual keywords. Whitespace separates
+  terms; **all terms** must match the same icon, possibly across different
+  names/tags. Try `green shield`, `drink`, or `blue sword`. Punctuation is
+  literal, not a regular expression. IDs are **texture file IDs**, not spell or
+  item IDs.
+- **Visual keywords are a first batch:** 576 visually reviewed images from a
+  broad World of Warcraft community sample, not the native Forever catalogue.
+  Only matching native/learned rows gain keywords; the sample adds no picker
+  icons. Native Forever coverage is unknown and may be small. Colors, objects
+  and visible effects are descriptions, not spell/item identities or mechanics.
+  Uncertain candidate interpretations are not searchable. Untagged icons still
+  support the normal ID/name/path search.
 - **Names are partial:** only learned player spells and currently equipped/bag
   items supply names. All available names sharing a texture can match it.
   This is not whole-game spell/item name search.
@@ -50,10 +61,12 @@ actual texture; only the normal native confirmation performs the name/icon save.
   spells. It ignores spellbook display settings. It retains native matches in
   native order and appends any missing learned textures in spellbook order.
 - **Blizzard Order** is the default. **Name A-Z** uses the first known name in
-  case-insensitive alphabetical order, with unnamed icons last. **Icon ID**
+  case-insensitive alphabetical order, with unnamed icons last. Visual keywords
+  never act as names or change that sort order. **Icon ID**
   sorts numerically, unresolved paths last. Ties retain their source order.
 
-Metadata is session-only. Opening the popup indexes bounded player spellbook,
+Dynamic names are session-only; visual keywords ship as offline text.
+Opening the popup indexes bounded player spellbook,
 equipment, and carried bag slots; relevant events refresh that metadata while
 open. Missing item/spell data loads asynchronously without blocking or retry loops.
 Typing searches the existing index, not item/spell ID spaces. Closing and
@@ -83,6 +96,7 @@ LuaRocks, luacheck, and busted are required for Lua validation.
 npm ci
 npm run test:scripts
 npm run changelog:check
+node scripts/build-icon-keywords.mjs --check
 luacheck .
 busted
 ```
@@ -97,6 +111,12 @@ drafts, unavailable/combat targets, and wrapped examples' button gutter.
 Picker tests exercise native lifecycle/provider lookup, duplicate order,
 associated names/IDs/paths, all filters, stable sorting, missing/asynchronous
 metadata, hidden selections, native confirmation/Cancel, and fixed popup bounds.
+Keyword tests cover color/object and multiword literal search, uncertainty
+exclusion, unchanged provider membership, live names and name-sort separation.
+`docs/icon-keywords.json` preserves the original annotations, image hashes,
+mapping/review provenance, confidence and uncertainty. To revise the original
+text data, edit that file, run `node scripts/build-icon-keywords.mjs`, then run
+the checks above. Node tests reject stale generated data. Do not add artwork.
 These are source-contract simulations, **not in-game proof**.
 
 ### In-game acceptance still required
@@ -108,7 +128,9 @@ On the supported client, with no account macro-file edits:
    The native name, selected icon, Okay/Cancel and companion must remain usable.
 2. Find an icon by a learned spell/passive/rank/flyout name, an equipped/bag
    item's name and a known texture ID. Try mixed case and literal `%`/`[`.
-   Check partial-name and empty-result guidance.
+   Check partial-name and empty-result guidance. Where a matching sampled
+   texture exists, try `green shield`, `drink`, and `blue sword`; a missing
+   keyword result does not mean the native picker lacks that kind of icon.
 3. Check My Spells with passives/low ranks hidden in the spellbook, and with a
    pet present. Learned player icons should remain; unlearned/pet-only icons
    should not enter that filter.

@@ -91,7 +91,7 @@ test('package contains all namespace modules in load order, without client confi
   const modules = toc.split(/\r?\n/).filter(line => line && !line.startsWith('#'));
   assert.deepEqual(modules, [
     'Changelog.lua', 'Reference.lua', 'Panel.lua',
-    'IconMetadata.lua', 'IconCatalog.lua', 'IconPicker.lua', 'Core.lua',
+    'IconKeywords.lua', 'IconMetadata.lua', 'IconCatalog.lua', 'IconPicker.lua', 'Core.lua',
   ]);
   for (const module of modules) assert.ok(read(module).length > 0);
   assert.match(read('.pkgmeta'), /^package-as: ForeverMacroManager/m);
